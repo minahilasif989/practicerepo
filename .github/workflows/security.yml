@@ -3,26 +3,49 @@ name: Security Scan
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:  
 
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Run Trivy
+      
+      - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-vulnerability-report
+          path: trivy-results.json
   
   gitleaks-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-      - name: Run Gitleaks
+          fetch-depth: 0  
+          
+      - name: Run Gitleaks Secret Detection
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fail-on-secret: true  
+          report-format: json
+          report-path: gitleaks-report.json
+          
+      - name: Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gitleaks-secrets-report
+          path: gitleaks-report.json
