@@ -26,8 +26,9 @@ jobs:
       - name: Deploy to S3
         run: |
           aws s3 sync . s3://my-bucket-deploy-123 \
-            --exclude ".git/*" \
-            --exclude ".github/*"
+          --exclude "*" \
+          --include "index.html" \
+          --delete
 
       - name: Done
         run: echo "App deployed on S3 !"
