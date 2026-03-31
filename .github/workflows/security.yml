@@ -5,19 +5,21 @@ on:
     branches: [ main ]
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  
 
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          
       - name: Upload Trivy Report
         uses: actions/upload-artifact@v4
         if: always()
@@ -30,41 +32,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-      
+          fetch-depth: 0  
+          
       - name: Run Gitleaks Secret Detection
-        id: gitleaks
-        continue-on-error: true
-        run: |
-          gitleaks detect \
-            --source . \
-            --verbose \
-            --report-format=json \
-            --report-path=gitleaks-report.json \
-            --redact=0
-      - name: Display Gitleaks Results
-        if: always()
-        run: |
-          if [ -f "gitleaks-report.json" ]; then
-            echo "Gitleaks Scan Results:"
-            echo "========================"
-            cat gitleaks-report.json | jq '.' || cat gitleaks-report.json
-          else
-            echo "No report generated"
-          fi
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fail-on-secret: true  
+          report-format: json
+          report-path: gitleaks-report.json
+          
       - name: Upload Gitleaks Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gitleaks-secrets-report
           path: gitleaks-report.json
-      - name: Check for Hardcoded Secrets
-        if: steps.gitleaks.outcome == 'failure'
-        run: |
-          echo "SECURITY SCAN FAILED!"
-          echo "Hardcoded secrets detected in code!"
-          echo "Check 'gitleaks-secrets-report' artifact for details"
-          exit 1
-      - name: No Secrets Found
-        if: steps.gitleaks.outcome == 'success'
-        run: echo "No hardcoded secrets detected"
